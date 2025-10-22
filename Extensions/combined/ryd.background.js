@@ -1,3 +1,20 @@
+/*
+ * MODIFIED FILE - Return YouTube Dislike - Free Edition
+ *
+ * This file has been modified from the original Return YouTube Dislike extension.
+ * Modification Date: October 22, 2025
+ *
+ * Changes made:
+ * - Removed broadcastPatreonStatus() function
+ * - Removed handlePatreonAuthComplete() function
+ * - Removed message handlers for: patreon_auth_complete, patreon_logout, patreon_oauth_login
+ * - Removed OAuth helper functions
+ *
+ * This program is free software under GNU GPL v3.
+ * Original work Copyright (C) Dmitry Selivanov & Community
+ * Modified work Copyright (C) 2025
+ */
+
 import { config, getApiUrl, getApiEndpoint, getChangelogUrl } from "./src/config";
 
 const apiUrl = getApiUrl();
@@ -14,53 +31,7 @@ else if (isFirefox()) api = browser;
 
 initExtConfig();
 
-function broadcastPatreonStatus(authenticated, user, sessionToken) {
-  chrome.tabs.query({}, (tabs) => {
-    tabs
-      .filter((tab) => tab.url && tab.url.includes("youtube.com"))
-      .forEach((tab) => {
-        const maybePromise = chrome.tabs.sendMessage(
-          tab.id,
-          {
-            message: "patreon_status_changed",
-            authenticated,
-            user: authenticated ? user : null,
-            sessionToken: authenticated ? sessionToken : null,
-          },
-          () => {
-            if (chrome.runtime.lastError) {
-              console.debug("Patreon status broadcast skipped:", chrome.runtime.lastError.message);
-            }
-          },
-        );
-
-        if (maybePromise && typeof maybePromise.catch === "function") {
-          maybePromise.catch((error) => {
-            console.debug("Patreon status broadcast skipped:", error?.message ?? error);
-          });
-        }
-      });
-  });
-}
-
-function handlePatreonAuthComplete(user, sessionToken, done) {
-  if (!user) {
-    done?.();
-    return;
-  }
-
-  chrome.storage.sync.set(
-    {
-      patreonAuthenticated: true,
-      patreonUser: user,
-      patreonSessionToken: sessionToken,
-    },
-    () => {
-      broadcastPatreonStatus(true, user, sessionToken);
-      done?.();
-    },
-  );
-}
+// Patreon functions removed - extension is now completely free
 
 function getIdentityApi() {
   if (isFirefox() && browser.identity) return browser.identity;
@@ -113,13 +84,6 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
   } else if (request.message === "log_off") {
     // chrome.identity.clearAllCachedAuthTokens(() => console.log("logged off"));
-  } else if (request.message === "patreon_auth_complete") {
-    handlePatreonAuthComplete(request.user, request.sessionToken);
-  } else if (request.message === "patreon_logout") {
-    // Clear Patreon authentication
-    chrome.storage.sync.remove(["patreonAuthenticated", "patreonUser", "patreonSessionToken"], () => {
-      broadcastPatreonStatus(false, null, null);
-    });
   } else if (request.message === "ryd_open_tab") {
     const targetUrl = typeof request?.url === "string" ? request.url : null;
     if (!targetUrl) {
@@ -178,61 +142,6 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   } else if (request.message == "send_vote") {
     sendVote(request.videoId, request.vote);
-    return true;
-  } else if (request.message === "patreon_oauth_login") {
-    (async () => {
-      try {
-        const idApi = getIdentityApi();
-        if (
-          !idApi ||
-          typeof (idApi.getRedirectURL || (isChrome() && chrome.identity && chrome.identity.getRedirectURL)) !==
-            "function"
-        ) {
-          sendResponse({ success: false, error: "identity API not available" });
-          return;
-        }
-        const redirectUri =
-          isFirefox() && browser.identity.getRedirectURL
-            ? browser.identity.getRedirectURL()
-            : isChrome() && chrome.identity.getRedirectURL
-              ? chrome.identity.getRedirectURL()
-              : "";
-
-        const startRes = await fetch(
-          getApiEndpoint(`/api/auth/oauth/login?redirectUri=${encodeURIComponent(redirectUri)}`),
-        );
-        const startData = await startRes.json();
-
-        const responseUrl = await launchWebAuthFlow(startData.authUrl);
-        const { code, state } = extractOAuthParams(responseUrl);
-        if (!code) {
-          sendResponse({ success: false, error: "No authorization code received" });
-          return;
-        }
-
-        const exchangeRes = await fetch(getApiEndpoint("/api/auth/oauth/exchange"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            code,
-            state,
-            expectedState: startData.state,
-            redirectUri: startData.redirectUri || redirectUri,
-          }),
-        });
-        const authData = await exchangeRes.json();
-        if (authData && authData.success) {
-          handlePatreonAuthComplete(authData.user, authData.sessionToken, () => {
-            sendResponse({ success: true, user: authData.user });
-          });
-        } else {
-          sendResponse({ success: false, error: (authData && authData.error) || "OAuth exchange failed" });
-        }
-      } catch (e) {
-        console.error("patreon_oauth_login error", e);
-        sendResponse({ success: false, error: String((e && e.message) || e) });
-      }
-    })();
     return true;
   }
 });

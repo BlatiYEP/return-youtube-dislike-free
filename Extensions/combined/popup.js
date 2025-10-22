@@ -1,3 +1,20 @@
+/*
+ * MODIFIED FILE - Return YouTube Dislike - Free Edition
+ *
+ * This file has been modified from the original Return YouTube Dislike extension.
+ * Modification Date: October 22, 2025
+ *
+ * Changes made:
+ * - Removed entire initPatreonAuth() function and all Patreon authentication UI (~250 lines)
+ * - Removed Patreon login/logout handlers
+ * - Removed session verification logic
+ * - Removed OAuth flow handling
+ *
+ * This program is free software under GNU GPL v3.
+ * Original work Copyright (C) Dmitry Selivanov & Community
+ * Modified work Copyright (C) 2025
+ */
+
 import { config as appConfig, getApiUrl, getApiEndpoint } from "./src/config.js";
 
 /*   Config   */
@@ -95,255 +112,7 @@ document.getElementById("hide_premium_teaser").addEventListener("click", (ev) =>
   chrome.storage.sync.set({ hidePremiumTeaser: ev.target.checked });
 });
 
-function initPatreonAuth() {
-  const loggedOutView = document.getElementById("patreon-logged-out");
-  const loggedInView = document.getElementById("patreon-logged-in");
-  const loginBtn = document.getElementById("patreon-login-btn");
-  const logoutBtn = document.getElementById("patreon-logout-btn");
-  const userAvatar = document.getElementById("patreon-user-avatar");
-  const userName = document.getElementById("patreon-user-name");
-  const userTier = document.getElementById("patreon-tier");
-
-  chrome.storage.sync.get(["patreonUser", "patreonSessionToken"], (data) => {
-    const cachedUser = data.patreonUser;
-    const sessionToken = data.patreonSessionToken;
-
-    if (sessionToken && cachedUser) {
-      // Show cached state immediately to avoid flicker on popup reopen.
-      showLoggedInView(cachedUser);
-
-      verifySession(sessionToken).then((result) => {
-        if (result.status === "valid") {
-          if (result.membershipTier && result.membershipTier !== cachedUser.membershipTier) {
-            const updatedUser = { ...cachedUser, membershipTier: result.membershipTier, hasActiveMembership: true };
-            showLoggedInView(updatedUser);
-            chrome.storage.sync.set({ patreonUser: updatedUser });
-          } else if (cachedUser.hasActiveMembership !== true) {
-            const updatedUser = { ...cachedUser, hasActiveMembership: true };
-            showLoggedInView(updatedUser);
-            chrome.storage.sync.set({ patreonUser: updatedUser });
-          }
-        } else if (result.status === "inactive") {
-          const updatedUser = {
-            ...cachedUser,
-            hasActiveMembership: false,
-            membershipTier: result.membershipTier || cachedUser.membershipTier || "none",
-          };
-          showLoggedInView(updatedUser);
-          chrome.storage.sync.set({ patreonUser: updatedUser });
-        } else if (result.status === "error") {
-          console.warn("Patreon session verification skipped:", result.reason || "network_error");
-        } else {
-          showLoggedOutView();
-          chrome.storage.sync.remove(["patreonUser", "patreonSessionToken"]);
-        }
-      });
-    } else {
-      showLoggedOutView();
-    }
-  });
-
-  function showLoggedOutView() {
-    loggedOutView.style.display = "block";
-    loggedInView.style.display = "none";
-  }
-
-  function showLoggedInView(user) {
-    loggedOutView.style.display = "none";
-    loggedInView.style.display = "block";
-
-    userName.textContent = user.fullName || user.email || chrome.i18n.getMessage("patreonUserFallback");
-
-    if (user.imageUrl) {
-      userAvatar.src = user.imageUrl;
-      userAvatar.style.display = "block";
-    } else {
-      userAvatar.src = "";
-      userAvatar.style.display = "none";
-    }
-
-    const tierLabels = {
-      premium: chrome.i18n.getMessage("patreonTierPremium"),
-      supporter: chrome.i18n.getMessage("patreonTierSupporter"),
-      basic: chrome.i18n.getMessage("patreonTierBasic"),
-      none: chrome.i18n.getMessage("patreonTierNone"),
-    };
-
-    userTier.textContent = tierLabels[user.membershipTier] || chrome.i18n.getMessage("patreonTierChecking");
-
-    if (user.hasActiveMembership) {
-      userTier.style.color = "#f96854";
-    } else {
-      userTier.style.color = "var(--lightGrey)";
-    }
-  }
-
-  async function verifySession(token) {
-    try {
-      const response = await fetch(getApiEndpoint("/api/auth/verify"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sessionToken: token }),
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!data) {
-        return { status: "error", reason: "invalid_response" };
-      }
-
-      const failureReason = typeof data.failureReason === "string" ? data.failureReason : null;
-      const membershipTier = typeof data.membershipTier === "string" ? data.membershipTier : null;
-
-      if (data.valid === true) {
-        return { status: "valid", membershipTier };
-      }
-
-      if (failureReason === "membershipinactive") {
-        return { status: "inactive", membershipTier };
-      }
-
-      if (failureReason === "expired" || failureReason === "legacyformat") {
-        return { status: "expired", membershipTier };
-      }
-
-      if (failureReason === "invalid") {
-        return { status: "invalid", membershipTier, failureReason };
-      }
-
-      if (!failureReason) {
-        return { status: "error", reason: "unknown_failure" };
-      }
-
-      return { status: "error", reason: failureReason };
-    } catch (error) {
-      console.error("Session verification failed:", error);
-      return { status: "error", reason: "network_error" };
-    }
-  }
-
-  // Wrapper for cross-browser identity API
-  function getIdentityApi() {
-    if (typeof browser !== "undefined" && browser.identity) return browser.identity; // prefer Firefox promise API
-    if (typeof chrome !== "undefined" && chrome.identity) return chrome.identity;
-    return null;
-  }
-
-  function launchWebAuthFlow(url) {
-    try {
-      if (
-        typeof browser !== "undefined" &&
-        browser.identity &&
-        typeof browser.identity.launchWebAuthFlow === "function"
-      ) {
-        // Promise-based API (Firefox)
-        return browser.identity.launchWebAuthFlow({ url, interactive: true });
-      }
-    } catch (_) {}
-
-    const chromeId = (typeof chrome !== "undefined" && chrome.identity) || null;
-    if (!chromeId || typeof chromeId.launchWebAuthFlow !== "function") {
-      return Promise.reject(new Error("identity API not available"));
-    }
-    // Callback-based API (Chrome)
-    return new Promise((resolve, reject) => {
-      chromeId.launchWebAuthFlow({ url, interactive: true }, (responseUrl) => {
-        const err = chrome.runtime && chrome.runtime.lastError;
-        if (err) reject(err);
-        else resolve(responseUrl);
-      });
-    });
-  }
-
-  function extractOAuthParams(responseUrl) {
-    try {
-      const u = new URL(responseUrl);
-      let code = u.searchParams.get("code");
-      let state = u.searchParams.get("state");
-      if (!code && u.hash) {
-        const hashParams = new URLSearchParams(u.hash.startsWith("#") ? u.hash.substring(1) : u.hash);
-        code = hashParams.get("code");
-        state = state || hashParams.get("state");
-      }
-      return { code, state };
-    } catch (_) {
-      return { code: null, state: null };
-    }
-  }
-
-  // Request identity permission immediately within the user click (no awaits prior)
-  function ensureIdentityPermission(onResult) {
-    try {
-      const mf = chrome && chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest() : null;
-      // If manifest cannot request identity dynamically (e.g., Firefox), proceed if API is available
-      if (mf && (!Array.isArray(mf.optional_permissions) || !mf.optional_permissions.includes("identity"))) {
-        const id = getIdentityApi();
-        onResult(Boolean(id && typeof id.getRedirectURL === "function"));
-        return;
-      }
-
-      const perms =
-        (typeof chrome !== "undefined" && chrome.permissions) ||
-        (typeof browser !== "undefined" && browser.permissions);
-      if (!perms || !perms.contains) return onResult(false);
-      const afterContains = (has) => {
-        if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.lastError) has = false;
-        if (has) return onResult(true);
-        if (!perms.request) return onResult(false);
-        const reqResult = perms.request({ permissions: ["identity"] }, (granted) => {
-          if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.lastError) return onResult(false);
-          onResult(Boolean(granted));
-        });
-        // Firefox may return a promise
-        if (reqResult && typeof reqResult.then === "function") {
-          reqResult.then((granted) => onResult(Boolean(granted))).catch(() => onResult(false));
-        }
-      };
-      const result = perms.contains({ permissions: ["identity"] }, afterContains);
-      if (result && typeof result.then === "function") {
-        result.then(afterContains).catch(() => onResult(false));
-      }
-    } catch (_) {
-      onResult(false);
-    }
-  }
-
-  loginBtn.addEventListener("click", () => {
-    // Request permission immediately within this user gesture
-    ensureIdentityPermission(async (granted) => {
-      const identityNow = getIdentityApi();
-      if (!granted || !identityNow || typeof identityNow.getRedirectURL !== "function") {
-        alert(chrome.i18n.getMessage("patreonPermissionRequired"));
-        return;
-      }
-      // Delegate OAuth to background so it persists if the popup closes
-      chrome.runtime.sendMessage({ message: "patreon_oauth_login" }, (resp) => {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          console.error("Login failed:", chrome.runtime.lastError.message);
-          alert(chrome.i18n.getMessage("patreonLoginStartFailed"));
-          return;
-        }
-        if (resp && resp.success) {
-          const user = resp.user;
-          showLoggedInView(user);
-        } else {
-          console.error("Login failed:", resp && resp.error);
-          alert(chrome.i18n.getMessage("patreonLoginCompleteFailed"));
-        }
-      });
-    });
-  });
-
-  logoutBtn.addEventListener("click", () => {
-    chrome.storage.sync.remove(["patreonUser", "patreonSessionToken"], () => {
-      showLoggedOutView();
-      chrome.runtime.sendMessage({ message: "patreon_logout" });
-    });
-  });
-}
-
-initPatreonAuth();
+// Patreon authentication removed - extension is now completely free
 
 /*   Advanced Toggle   */
 const advancedToggle = document.getElementById("advancedToggle");

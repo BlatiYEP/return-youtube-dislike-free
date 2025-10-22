@@ -1,0 +1,113 @@
+NOTICE - Return YouTube Dislike - Free Edition
+===============================================
+
+This is a modified version of the Return YouTube Dislike browser extension.
+
+Modification Date: October 22, 2025
+
+ORIGINAL PROJECT
+----------------
+Original project: Return YouTube Dislike
+Original repository: https://github.com/Anarios/return-youtube-dislike
+Original author: Dmitry Selivanov & Community
+Original license: GNU General Public License v3.0
+
+MODIFICATIONS MADE
+------------------
+This fork removes all premium/paywall features to create a completely free version
+of the extension. The following changes were made:
+
+1. Deleted Files/Folders:
+   - Extensions/combined/src/premiumAnalytics/ (entire folder)
+     * Contained all premium panel and analytics UI code
+
+2. Gutted Files (functionality removed):
+   - Extensions/combined/src/patreon.js
+     * Removed all Patreon authentication logic
+     * Disabled premium feature initialization
+     * All functions now return false/null/none
+
+3. Modified Files:
+   - Extensions/combined/ryd.content-script.js
+     * Removed: import { initPatreonFeatures } from "./src/patreon"
+     * Removed: initPatreonFeatures() call
+
+   - Extensions/combined/popup.js
+     * Removed entire initPatreonAuth() function (~250 lines)
+     * Removed all Patreon login/logout handlers
+     * Removed session verification logic
+     * Removed OAuth flow handling
+
+   - Extensions/combined/ryd.background.js
+     * Removed broadcastPatreonStatus() function
+     * Removed handlePatreonAuthComplete() function
+     * Removed message handlers for: patreon_auth_complete, patreon_logout, patreon_oauth_login
+     * Removed OAuth helper functions
+
+   - Extensions/combined/content-style.css
+     * Removed all .ryd-premium-* CSS rules (~653 lines removed)
+     * Kept only basic ratio bar styling
+
+   - Extensions/combined/_locales/en/messages.json
+     * Updated extension name to "Return YouTube Dislike - Free"
+     * Updated extension description to mention "Free Edition (no paywalls)"
+     * Updated donation message to reference GPL v3 fork
+     * Updated developer attribution to credit original authors
+
+4. What Remains:
+   - Core dislike counting functionality
+   - Ratio bar display
+   - Vote submission to API
+   - All original non-premium features
+   - Full YouTube integration (regular videos and Shorts)
+
+IMPORTANT LIMITATIONS
+---------------------
+The actual premium analytics data (charts, country breakdowns, activity timelines)
+is server-side API-protected and cannot be bypassed. This fork only removes the
+client-side UI prompts and paywalls. The core dislike counting functionality
+remains fully operational.
+
+LICENSE
+-------
+This modified work is released under the same license as the original:
+GNU General Public License version 3 (GPL-3.0)
+
+You are free to:
+- Use this software for any purpose
+- Change the software to suit your needs
+- Share the software with your friends and neighbors
+- Share the changes you make
+
+Under the following conditions:
+- You must include the license and copyright notice with each copy
+- You must state significant changes made to the software
+- You must make source code available when you distribute the software
+- If you modify and distribute the software, you must license it under GPL-3.0
+
+See the LICENSE file for the full text of the GNU GPL v3.0.
+
+COPYRIGHT
+---------
+Original work Copyright (C) Dmitry Selivanov & Community
+Modified work Copyright (C) 2025
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+ATTRIBUTION
+-----------
+This fork is based on the excellent work of the Return YouTube Dislike team.
+If you appreciate this software, please consider supporting the original project
+at https://www.returnyoutubedislike.com/
+
+The modifications made in this fork are solely focused on removing paywalls and
+making the extension completely free for all users, in accordance with the
+spirit of the GNU GPL v3 license.

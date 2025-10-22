@@ -1,9 +1,21 @@
-import { initPremiumAnalytics, teardownPremiumAnalytics, updatePremiumSession } from "./premiumAnalytics";
-import {
-  initPremiumTeaser,
-  setTeaserSuppressed,
-  TEASER_SUPPRESSION_REASON_PREMIUM,
-} from "./premiumAnalytics/teaser";
+/*
+ * MODIFIED FILE - Return YouTube Dislike - Free Edition
+ *
+ * This file has been modified from the original Return YouTube Dislike extension.
+ * Modification Date: October 22, 2025
+ *
+ * Changes made:
+ * - Removed all Patreon authentication and premium feature functionality
+ * - Made extension completely free with no paywalls
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Original work Copyright (C) Dmitry Selivanov & Community
+ * Modified work Copyright (C) 2025
+ */
 
 let patreonState = {
   authenticated: false,
@@ -12,67 +24,23 @@ let patreonState = {
 };
 
 function initPatreonFeatures() {
-  initPremiumTeaser();
-
-  chrome.storage.sync.get(["patreonAuthenticated", "patreonUser", "patreonSessionToken"], (data) => {
-    if (data.patreonAuthenticated && data.patreonUser) {
-      patreonState.authenticated = true;
-      patreonState.user = data.patreonUser;
-      patreonState.sessionToken = data.patreonSessionToken;
-      updatePremiumSession({
-        token: patreonState.sessionToken,
-        active: patreonState.user?.hasActiveMembership,
-        membershipTier: patreonState.user?.membershipTier,
-      });
-      enablePremiumFeatures();
-    }
-  });
-
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.message === "patreon_status_changed") {
-      patreonState.authenticated = request.authenticated;
-      patreonState.user = request.user || null;
-
-      if (request.authenticated) {
-        patreonState.sessionToken = request.sessionToken ?? patreonState.sessionToken;
-        updatePremiumSession({
-          token: patreonState.sessionToken,
-          active: patreonState.user?.hasActiveMembership,
-          membershipTier: patreonState.user?.membershipTier,
-        });
-        enablePremiumFeatures();
-      } else {
-        patreonState.sessionToken = null;
-        updatePremiumSession({ token: null, active: false });
-        disablePremiumFeatures();
-      }
-    }
-  });
+  // Premium features disabled - extension is now completely free
 }
 
 function enablePremiumFeatures() {
-  const tier = patreonState.user?.membershipTier;
-  const hasActiveMembership = patreonState.user?.hasActiveMembership;
-
-  if (hasActiveMembership && tier === "premium") {
-    setTeaserSuppressed(true, TEASER_SUPPRESSION_REASON_PREMIUM);
-    initPremiumAnalytics();
-  }
+  // Premium features disabled
 }
 
 function disablePremiumFeatures() {
-  const premiumElements = document.querySelectorAll(".ryd-premium-feature");
-  premiumElements.forEach((el) => el.remove());
-  teardownPremiumAnalytics();
-  setTeaserSuppressed(false, TEASER_SUPPRESSION_REASON_PREMIUM);
+  // Premium features disabled
 }
 
 function isPatreonUser() {
-  return patreonState.authenticated && patreonState.user?.hasActiveMembership;
+  return false;
 }
 
 function getPatreonTier() {
-  return patreonState.user?.membershipTier || "none";
+  return "none";
 }
 
 export { initPatreonFeatures, isPatreonUser, getPatreonTier, patreonState };
