@@ -27,9 +27,14 @@ All core features remain fully functional:
 
 ## Installation
 
+**Note:** The extension is already pre-built in the repository. You don't need to run `npm install` or `npm build` unless you want to modify the source code.
+
 ### Chrome/Edge/Brave
 
-1. Download or clone this repository
+1. Download or clone this repository:
+   ```bash
+   git clone https://github.com/BlatiYEP/return-youtube-dislike-free.git
+   ```
 2. Open Chrome and go to `chrome://extensions/`
 3. Enable "Developer mode" (toggle in top right)
 4. Click "Load unpacked"
@@ -37,7 +42,10 @@ All core features remain fully functional:
 
 ### Firefox
 
-1. Download or clone this repository
+1. Download or clone this repository:
+   ```bash
+   git clone https://github.com/BlatiYEP/return-youtube-dislike-free.git
+   ```
 2. Open Firefox and go to `about:debugging#/runtime/this-firefox`
 3. Click "Load Temporary Add-on"
 4. Select any file in: `Extensions/combined/dist/firefox`
